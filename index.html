@@ -2863,43 +2863,86 @@ function validateCheckoutForm() {
     return true;
 }
 
+ 
 async function placeOrder() {
 
     if (!validateCheckoutForm()) return;
 
-    const name = document.getElementById("checkoutName").value.trim();
-    const phone = document.getElementById("checkoutPhone").value.trim();
-    const email = document.getElementById("checkoutEmail").value.trim();
-    const state = document.getElementById("checkoutState").value.trim();
-    const address = document.getElementById("checkoutAddress").value.trim();
+    /* =====================================================
+       CUSTOMER DETAILS
+       ===================================================== */
+
+    const name =
+        document.getElementById("customerName").value.trim();
+
+    const phone =
+        document.getElementById("customerPhone").value.trim();
+
+    const email =
+        document.getElementById("customerEmail").value.trim();
+
+    const state =
+        document.getElementById("customerState").value.trim();
+
+    const address =
+        document.getElementById("customerAddress").value.trim();
+
+
+    /* =====================================================
+       TOTAL
+       ===================================================== */
 
     const total = finalCheckoutTotal();
+
+
+    /* =====================================================
+       ORDER REFERENCE
+       ===================================================== */
 
     const reference =
         "BJS-" +
         Date.now() +
         "-" +
-        Math.random().toString(36).substring(2, 8).toUpperCase();
+        Math.random()
+            .toString(36)
+            .substring(2, 8)
+            .toUpperCase();
+
+
+    /* =====================================================
+       CREATE ORDER
+       ===================================================== */
 
     const order = {
 
         reference: reference,
 
         customer: {
+
             name: name,
+
             phone: phone,
+
             email: email,
+
             state: state,
+
             address: address
+
         },
 
         items: cart.map(item => ({
 
             productId: item.id,
+
             productName: item.name,
+
             quantity: item.quantity,
+
             unitPrice: item.price,
+
             size: item.size,
+
             colour: item.colourSelected
 
         })),
@@ -2908,36 +2951,57 @@ async function placeOrder() {
 
         discount: discountAmount,
 
-        coupon: appliedCoupon
-            ? appliedCoupon.code
-            : null,
+        coupon:
+            appliedCoupon
+                ? appliedCoupon.code
+                : null,
 
         total: total,
 
         currency: "NGN"
+
     };
 
 
-    /* ----------------------------------
-       CREATE HUMAN-READABLE ORDER DETAILS
-       ---------------------------------- */
+    /* =====================================================
+       HUMAN-READABLE ORDER SUMMARY
+       ===================================================== */
 
-    const orderSummary = order.items.map(item => {
+    const orderSummary =
+        order.items.map(item => {
 
-        return (
-            `${item.productName}` +
-            ` | Qty: ${item.quantity}` +
-            ` | Size: ${item.size}` +
-            ` | Colour: ${item.colour}` +
-            ` | Unit Price: ₦${Number(item.unitPrice).toLocaleString()}`
+            return (
+                `${item.productName}` +
+                ` | Qty: ${item.quantity}` +
+                ` | Size: ${item.size}` +
+                ` | Colour: ${item.colour}` +
+                ` | Unit Price: ₦${Number(item.unitPrice).toLocaleString("en-NG")}`
+            );
+
+        }).join(" || ");
+
+
+    /* =====================================================
+       CHECK PAYSTACK
+       ===================================================== */
+
+    if (typeof PaystackPop === "undefined") {
+
+        alert(
+            "Payment system could not load. Please refresh the page and try again."
         );
 
-    }).join("\n");
+        console.error(
+            "PaystackPop is not available."
+        );
+
+        return;
+    }
 
 
-    /* ----------------------------------
+    /* =====================================================
        OPEN PAYSTACK
-       ---------------------------------- */
+       ===================================================== */
 
     const popup = new PaystackPop();
 
@@ -2951,12 +3015,10 @@ async function placeOrder() {
 
         currency: "NGN",
 
-        reference: reference,
 
-
-        /* ----------------------------------
-           FULL ORDER INFORMATION FOR PAYSTACK
-           ---------------------------------- */
+        /* =================================================
+           ORDER INFORMATION SENT TO PAYSTACK
+           ================================================= */
 
         metadata: {
 
@@ -2969,8 +3031,8 @@ async function placeOrder() {
                 },
 
                 {
-                    display_name: "Phone",
-                    variable_name: "phone",
+                    display_name: "Phone Number",
+                    variable_name: "phone_number",
                     value: phone
                 },
 
@@ -2993,8 +3055,8 @@ async function placeOrder() {
                 },
 
                 {
-                    display_name: "Order Details",
-                    variable_name: "order_details",
+                    display_name: "Jersey Order",
+                    variable_name: "jersey_order",
                     value: orderSummary
                 },
 
@@ -3002,14 +3064,14 @@ async function placeOrder() {
                     display_name: "Subtotal",
                     variable_name: "subtotal",
                     value:
-                        `₦${Number(order.subtotal).toLocaleString()}`
+                        `₦${Number(order.subtotal).toLocaleString("en-NG")}`
                 },
 
                 {
                     display_name: "Discount",
                     variable_name: "discount",
                     value:
-                        `₦${Number(order.discount).toLocaleString()}`
+                        `₦${Number(order.discount).toLocaleString("en-NG")}`
                 },
 
                 {
@@ -3025,7 +3087,7 @@ async function placeOrder() {
                     display_name: "Total Paid",
                     variable_name: "total_paid",
                     value:
-                        `₦${Number(total).toLocaleString()}`
+                        `₦${Number(total).toLocaleString("en-NG")}`
                 }
 
             ]
@@ -3033,9 +3095,9 @@ async function placeOrder() {
         },
 
 
-        /* ----------------------------------
+        /* =================================================
            PAYMENT SUCCESS
-           ---------------------------------- */
+           ================================================= */
 
         onSuccess: async function(transaction) {
 
@@ -3061,11 +3123,17 @@ async function placeOrder() {
                             reference:
                                 transaction.reference,
 
-                            // Send NAIRA here.
-                            // Netlify converts it to kobo.
+                            /*
+                               IMPORTANT:
+                               Send the amount in NAIRA.
+                               Your Netlify function converts it
+                               to Kobo before comparing with Paystack.
+                            */
+
                             expectedAmount: total
 
                         })
+
                     }
                 );
 
@@ -3074,27 +3142,38 @@ async function placeOrder() {
                     await response.json();
 
 
+                /* =================================================
+                   VERIFICATION FAILED
+                   ================================================= */
+
                 if (
                     !response.ok ||
                     !result.success
                 ) {
 
                     alert(
+
                         "Payment could not be verified.\n\n" +
+
                         "Please contact us with your payment reference:\n" +
+
                         transaction.reference
+
                     );
 
                     return;
+
                 }
 
 
-                /* ----------------------------------
-                   PAYMENT CONFIRMED
-                   ---------------------------------- */
+                /* =================================================
+                   PAYMENT VERIFIED
+                   ================================================= */
 
                 localStorage.setItem(
+
                     "bjs_last_order",
+
                     JSON.stringify({
 
                         ...order,
@@ -3105,12 +3184,13 @@ async function placeOrder() {
                         status: "paid"
 
                     })
+
                 );
 
 
-                /* ----------------------------------
+                /* =================================================
                    CLEAR CART
-                   ---------------------------------- */
+                   ================================================= */
 
                 cart = [];
 
@@ -3124,18 +3204,19 @@ async function placeOrder() {
                 closeCheckout();
 
 
+                /* =================================================
+                   SUCCESS MESSAGE
+                   ================================================= */
+
                 showToast(
                     "Payment verified successfully!"
                 );
 
 
-                /* ----------------------------------
-                   CUSTOMER CONFIRMATION
-                   ---------------------------------- */
-
                 setTimeout(() => {
 
                     alert(
+
                         "Thank you for your order! 🎉\n\n" +
 
                         "Order Reference: " +
@@ -3143,6 +3224,7 @@ async function placeOrder() {
                         "\n\n" +
 
                         "Your payment has been verified successfully."
+
                     );
 
                 }, 500);
@@ -3172,6 +3254,10 @@ async function placeOrder() {
         },
 
 
+        /* =================================================
+           PAYMENT CANCELLED
+           ================================================= */
+
         onCancel: function() {
 
             showToast(
@@ -3183,6 +3269,7 @@ async function placeOrder() {
     });
 
 }
+
  
 /* =========================================================
    GOSPEL PARTNER
