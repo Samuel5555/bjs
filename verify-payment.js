@@ -12,7 +12,7 @@ exports.handler = async function (event) {
 
         const { reference, expectedAmount } = JSON.parse(event.body || "{}");
 
-        if (!reference || !expectedAmount) {
+        if (!reference || expectedAmount === undefined) {
             return {
                 statusCode: 400,
                 body: JSON.stringify({
@@ -35,6 +35,8 @@ exports.handler = async function (event) {
 
         const result = await response.json();
 
+        console.log("Paystack response:", JSON.stringify(result));
+
         if (!result.status || !result.data) {
             return {
                 statusCode: 400,
@@ -47,8 +49,11 @@ exports.handler = async function (event) {
 
         const payment = result.data;
 
+        // Convert expected amount from Naira to Kobo
+        const expectedAmountInKobo = Math.round(Number(expectedAmount) * 100);
+
         const amountMatches =
-            Number(payment.amount) === Number(expectedAmount);
+            Number(payment.amount) === expectedAmountInKobo;
 
         const paymentSuccessful =
             payment.status === "success";
@@ -57,11 +62,25 @@ exports.handler = async function (event) {
             payment.currency === "NGN";
 
         if (!paymentSuccessful || !amountMatches || !currencyMatches) {
+
+            console.log("Verification failed:", {
+                paystackAmount: payment.amount,
+                expectedAmountInKobo,
+                status: payment.status,
+                currency: payment.currency
+            });
+
             return {
                 statusCode: 400,
                 body: JSON.stringify({
                     success: false,
-                    message: "Payment verification failed"
+                    message: "Payment verification failed",
+                    details: {
+                        paystackAmount: payment.amount,
+                        expectedAmount: expectedAmountInKobo,
+                        status: payment.status,
+                        currency: payment.currency
+                    }
                 })
             };
         }
@@ -78,7 +97,8 @@ exports.handler = async function (event) {
         };
 
     } catch (error) {
-        console.error(error);
+
+        console.error("Verification error:", error);
 
         return {
             statusCode: 500,
