@@ -2863,57 +2863,45 @@ function validateCheckoutForm() {
     return true;
 }
 
-async function placeOrder(event) {
-
-    event.preventDefault();
+async function placeOrder() {
 
     if (!validateCheckoutForm()) return;
 
-    const name =
-        document.getElementById("customerName").value.trim();
+    const name = document.getElementById("checkoutName").value.trim();
+    const phone = document.getElementById("checkoutPhone").value.trim();
+    const email = document.getElementById("checkoutEmail").value.trim();
+    const state = document.getElementById("checkoutState").value.trim();
+    const address = document.getElementById("checkoutAddress").value.trim();
 
-    const phone =
-        document.getElementById("customerPhone").value.trim();
-
-    const email =
-        document.getElementById("customerEmail").value.trim();
-
-    const state =
-        document.getElementById("customerState").value;
-
-    const address =
-        document.getElementById("customerAddress").value.trim();
-
-
-
-    const total =
-        finalCheckoutTotal();
+    const total = finalCheckoutTotal();
 
     const reference =
         "BJS-" +
         Date.now() +
         "-" +
-        Math.random().toString(36).slice(2,8).toUpperCase();
+        Math.random().toString(36).substring(2, 8).toUpperCase();
 
     const order = {
 
-        reference,
+        reference: reference,
 
         customer: {
-            name,
-            phone,
-            email,
-            state,
-            address
+            name: name,
+            phone: phone,
+            email: email,
+            state: state,
+            address: address
         },
 
         items: cart.map(item => ({
+
             productId: item.id,
             productName: item.name,
             quantity: item.quantity,
             unitPrice: item.price,
             size: item.size,
             colour: item.colourSelected
+
         })),
 
         subtotal: cartSubtotal(),
@@ -2924,189 +2912,278 @@ async function placeOrder(event) {
             ? appliedCoupon.code
             : null,
 
-        total,
+        total: total,
 
         currency: "NGN"
     };
 
-    try {
 
-        /*
-          Preferred production architecture:
-          POST this order to your backend first.
-          The backend should create the Paystack transaction
-          with the secret key and return an access_code.
+    /* ----------------------------------
+       CREATE HUMAN-READABLE ORDER DETAILS
+       ---------------------------------- */
 
-          This standalone version uses Paystack Popup V2
-          directly with your PUBLIC key so the HTML can work
-          immediately.
-        */
+    const orderSummary = order.items.map(item => {
 
-        const popup =
-            new PaystackPop();
+        return (
+            `${item.productName}` +
+            ` | Qty: ${item.quantity}` +
+            ` | Size: ${item.size}` +
+            ` | Colour: ${item.colour}` +
+            ` | Unit Price: ₦${Number(item.unitPrice).toLocaleString()}`
+        );
 
-        popup.newTransaction({
+    }).join("\n");
 
-            key: PAYSTACK_PUBLIC_KEY,
 
-            email,
+    /* ----------------------------------
+       OPEN PAYSTACK
+       ---------------------------------- */
 
-            amount:
-                Math.round(total * 100),
+    const popup = new PaystackPop();
 
-            currency: "NGN",
+    popup.newTransaction({
 
-            firstName:
-                name.split(" ")[0],
+        key: PAYSTACK_PUBLIC_KEY,
 
-            lastName:
-                name.split(" ").slice(1).join(" "),
+        email: email,
 
-            phone,
+        amount: Math.round(total * 100),
 
-          
-            reference,
+        currency: "NGN",
 
-            metadata: {
-                custom_fields: [
-                    {
-                        display_name: "Customer Name",
-                        variable_name: "customer_name",
-                        value: name
-                    },
-                    {
-                        display_name: "Phone",
-                        variable_name: "phone",
-                        value: phone
-                    },
-                    {
-                        display_name: "Delivery State",
-                        variable_name: "delivery_state",
-                        value: state
-                    },
-                    {
-                        display_name: "Delivery Address",
-                        variable_name: "delivery_address",
-                        value: address
-                    },
-                    {
-                        display_name: "Coupon",
-                        variable_name: "coupon",
-                        value: appliedCoupon
+        reference: reference,
+
+
+        /* ----------------------------------
+           FULL ORDER INFORMATION FOR PAYSTACK
+           ---------------------------------- */
+
+        metadata: {
+
+            custom_fields: [
+
+                {
+                    display_name: "Customer Name",
+                    variable_name: "customer_name",
+                    value: name
+                },
+
+                {
+                    display_name: "Phone",
+                    variable_name: "phone",
+                    value: phone
+                },
+
+                {
+                    display_name: "Delivery State",
+                    variable_name: "delivery_state",
+                    value: state
+                },
+
+                {
+                    display_name: "Delivery Address",
+                    variable_name: "delivery_address",
+                    value: address
+                },
+
+                {
+                    display_name: "Order Reference",
+                    variable_name: "order_reference",
+                    value: reference
+                },
+
+                {
+                    display_name: "Order Details",
+                    variable_name: "order_details",
+                    value: orderSummary
+                },
+
+                {
+                    display_name: "Subtotal",
+                    variable_name: "subtotal",
+                    value:
+                        `₦${Number(order.subtotal).toLocaleString()}`
+                },
+
+                {
+                    display_name: "Discount",
+                    variable_name: "discount",
+                    value:
+                        `₦${Number(order.discount).toLocaleString()}`
+                },
+
+                {
+                    display_name: "Coupon",
+                    variable_name: "coupon",
+                    value:
+                        appliedCoupon
                             ? appliedCoupon.code
                             : "None"
-                    },
-                    {
-                        display_name: "Order",
-                        variable_name: "order_reference",
-                        value: reference
-                    }
-                ],
+                },
 
-                order: JSON.stringify(order.items),
+                {
+                    display_name: "Total Paid",
+                    variable_name: "total_paid",
+                    value:
+                        `₦${Number(total).toLocaleString()}`
+                }
 
-                coupon:
-                    appliedCoupon
-                        ? appliedCoupon.code
-                        : null,
+            ]
 
-                discount:
-                    discountAmount
-            },
+        },
 
-         onSuccess: async function(transaction) {
 
-    showToast("Payment received. Verifying payment...");
+        /* ----------------------------------
+           PAYMENT SUCCESS
+           ---------------------------------- */
 
-    try {
+        onSuccess: async function(transaction) {
 
-        const response = await fetch("/.netlify/functions/verify-payment", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                reference: transaction.reference,
-                expectedAmount: Math.round(total * 100)
-            })
-        });
-
-        const result = await response.json();
-
-        if (!response.ok || !result.success) {
-            alert(
-                "Payment could not be verified.\n\n" +
-                "Please contact us with your payment reference:\n" +
-                transaction.reference
+            showToast(
+                "Payment received. Verifying payment..."
             );
-            return;
-        }
 
-        // Payment is now confirmed by Paystack
-        localStorage.setItem("bjs_last_order", JSON.stringify({
-            ...order,
-            paystackReference: transaction.reference,
-            status: "paid"
-        }));
 
-        cart = [];
-        localStorage.setItem("cart", JSON.stringify(cart));
+            try {
 
-        updateCart();
-        closeCheckout();
+                const response = await fetch(
+                    "/.netlify/functions/verify-payment",
+                    {
+                        method: "POST",
 
-        showToast("Payment verified successfully!");
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
 
-        setTimeout(() => alert(
-            "Thank you for your order!\n\nOrder reference: " +
-            transaction.reference
-        ), 500);
+                        body: JSON.stringify({
 
-    } catch (error) {
+                            reference:
+                                transaction.reference,
 
-        console.error("Verification error:", error);
+                            // Send NAIRA here.
+                            // Netlify converts it to kobo.
+                            expectedAmount: total
 
-        alert(
-            "We received your payment, but could not verify it right now.\n\n" +
-            "Please contact us with your payment reference:\n" +
-            transaction.reference
-        );
-    }
-},
+                        })
+                    }
+                );
 
-            onCancel: function() {
+
+                const result =
+                    await response.json();
+
+
+                if (
+                    !response.ok ||
+                    !result.success
+                ) {
+
+                    alert(
+                        "Payment could not be verified.\n\n" +
+                        "Please contact us with your payment reference:\n" +
+                        transaction.reference
+                    );
+
+                    return;
+                }
+
+
+                /* ----------------------------------
+                   PAYMENT CONFIRMED
+                   ---------------------------------- */
+
+                localStorage.setItem(
+                    "bjs_last_order",
+                    JSON.stringify({
+
+                        ...order,
+
+                        paystackReference:
+                            transaction.reference,
+
+                        status: "paid"
+
+                    })
+                );
+
+
+                /* ----------------------------------
+                   CLEAR CART
+                   ---------------------------------- */
+
+                cart = [];
+
+                localStorage.setItem(
+                    "cart",
+                    JSON.stringify(cart)
+                );
+
+                updateCart();
+
+                closeCheckout();
+
 
                 showToast(
-                    "Payment cancelled."
+                    "Payment verified successfully!"
                 );
-            },
 
-            onError: function(error) {
+
+                /* ----------------------------------
+                   CUSTOMER CONFIRMATION
+                   ---------------------------------- */
+
+                setTimeout(() => {
+
+                    alert(
+                        "Thank you for your order! 🎉\n\n" +
+
+                        "Order Reference: " +
+                        transaction.reference +
+                        "\n\n" +
+
+                        "Your payment has been verified successfully."
+                    );
+
+                }, 500);
+
+
+            } catch (error) {
 
                 console.error(
-                    "Paystack error:",
+                    "Verification error:",
                     error
                 );
 
-                showToast(
-                    error?.message ||
-                    "Payment could not be completed."
+
+                alert(
+
+                    "We received your payment, " +
+                    "but could not verify it right now.\n\n" +
+
+                    "Please contact us with your payment reference:\n" +
+
+                    transaction.reference
+
                 );
+
             }
 
-        });
+        },
 
-    } catch (error) {
 
-        console.error(error);
+        onCancel: function() {
 
-        showToast(
-            "Unable to start Paystack checkout."
-        );
-    }
+            showToast(
+                "Payment cancelled."
+            );
+
+        }
+
+    });
+
 }
-
-
+ 
 /* =========================================================
    GOSPEL PARTNER
    ========================================================= */
