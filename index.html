@@ -3014,47 +3014,65 @@ async function placeOrder(event) {
                     discountAmount
             },
 
-            onSuccess: function(transaction) {
+         onSuccess: async function(transaction) {
 
-                /*
-                   Do NOT treat this browser callback as your
-                   final proof of payment in production.
+    showToast("Payment received. Verifying payment...");
 
-                   Your server should verify the transaction
-                   reference with Paystack before fulfilling
-                   the order.
-                */
+    try {
 
-                localStorage.setItem(
-                    "bjs_last_order",
-                    JSON.stringify({
-                        ...order,
-                        paystackReference:
-                            transaction.reference,
-                        status: "payment_callback_received"
-                    })
-                );
-
-                cart = [];
-
-                updateCart();
-
-                closeCheckout();
-
-                showToast(
-                    "Payment successful. Your order has been received!"
-                );
-
-                setTimeout(() => {
-
-                    alert(
-                        "Thank you for your order!\\n\\n" +
-                        "Order reference: " +
-                        transaction.reference
-                    );
-
-                }, 500);
+        const response = await fetch("/.netlify/functions/verify-payment", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
             },
+            body: JSON.stringify({
+                reference: transaction.reference,
+                expectedAmount: Math.round(total * 100)
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            alert(
+                "Payment could not be verified.\n\n" +
+                "Please contact us with your payment reference:\n" +
+                transaction.reference
+            );
+            return;
+        }
+
+        // Payment is now confirmed by Paystack
+        localStorage.setItem("bjs_last_order", JSON.stringify({
+            ...order,
+            paystackReference: transaction.reference,
+            status: "paid"
+        }));
+
+        cart = [];
+        localStorage.setItem("cart", JSON.stringify(cart));
+
+        updateCart();
+        closeCheckout();
+
+        showToast("Payment verified successfully!");
+
+        setTimeout(() => alert(
+            "Thank you for your order!\n\nOrder reference: " +
+            transaction.reference
+        ), 500);
+
+    } catch (error) {
+
+        console.error("Verification error:", error);
+
+        alert(
+            "We received your payment, but could not verify it right now.\n\n" +
+            "Please contact us with your payment reference:\n" +
+            transaction.reference
+        );
+    }
+},
 
             onCancel: function() {
 
