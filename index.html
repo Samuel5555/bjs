@@ -2979,31 +2979,13 @@ function validateCheckoutForm() {
                         variable_name: "phone",
                         value: phone
                     },
-                 {
-                        display_name: "Jersey",
-                        variable_name: "jersey",
-                        value: productName
-                    },
-                    {
-                        display_name: "Quantity",
-                        variable_name: "quantity",
-                        value: quantity
-                    },
-                    {
-                        display_name: "Price",
-                        variable_name: "price",
-                        value: unitPrice
-                    },
-                    {
-                        display_name: "Size",
-                        variable_name: "size",
-                        value: size
-                    },
-                    {
-                        display_name: "Colour",
-                        variable_name: "colour",
-                        value: colour
-                    },
+{
+    display_name: "Jerseys",
+    variable_name: "jerseys",
+    value: order.items.map(item =>
+        `${item.productName} | ${item.colour} | ${item.size} | Qty: ${item.quantity}`
+    ).join(" || ")
+},
                     
                     {
                         display_name: "Delivery State",
