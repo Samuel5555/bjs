@@ -2278,7 +2278,7 @@ function renderProducts() {
                 <div class="product-category">${product.bible}</div>
                 <div class="product-name">${product.name}</div>
                 <div style="color:#697586;font-size:12px;margin-bottom:4px;">${product.colour}</div>
-                <div class="product-price">${money(product.price)}</div>
+                <div class="product-price">${displayCouponPrice(product.price)}</div>
                 <div class="product-actions">
                     <button class="btn btn-primary" onclick="addToCart(${product.id})">ADD TO CART</button>
                 </div>
@@ -2969,7 +2969,29 @@ function validateCheckoutForm() {
         );
     }
 }
+function displayCouponPrice(price) {
+    const discountedPrice = price * 0.4;
 
+    return `
+        <div class="coupon-price">
+            <span class="old-price">
+                ₦${price.toLocaleString()}
+            </span>
+
+            <span class="new-price">
+                ₦${Math.round(discountedPrice).toLocaleString()}
+            </span>
+
+            <span class="coupon-tag">
+                60% OFF WITH COUPON
+            </span>
+
+            <div class="coupon-code">
+                Use code: <strong>GOSPEL60</strong>
+            </div>
+        </div>
+    `;
+}
 
  
 /* =========================================================
