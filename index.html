@@ -1186,7 +1186,7 @@ footer {
 
 <div class="top-bar">
      <span>It's Black Friday week!!! 
-Enjoy massive 60% off on all items with free nationwide delivery!!
+Enjoy massive 60% off on all items with free nationwide delivery!! Ends on 30th November!
 Use coupon code: GOSPEL60</span>
 
 </div>
@@ -1476,7 +1476,7 @@ Use coupon code: GOSPEL60</span>
     </div>
 
     <div class="form-group">
-        <label>Phone Number</label>
+        <label>Whatsapp Phone Number</label>
         <input
             type="tel"
             id="partnerPhone"
@@ -1863,7 +1863,7 @@ Use coupon code: GOSPEL60</span>
 
         <div class="form-group">
 
-            <label>Phone Number</label>
+            <label>Whatsapp Phone Number</label>
 
             <input
                 type="tel"
@@ -2231,178 +2231,109 @@ const products = [
    ========================================================= */
 
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
+let cartLineCounter = 1;
+
+// Give existing saved cart items unique line IDs.
+cart.forEach(item => {
+    if (!item.lineId) item.lineId = cartLineCounter++;
+    else cartLineCounter = Math.max(cartLineCounter, Number(item.lineId) + 1);
+});
+localStorage.setItem("cart", JSON.stringify(cart));
 
 /* =========================================================
    CURRENCY
    ========================================================= */
 
 function money(amount) {
-
     return "₦" + amount.toLocaleString("en-NG");
-
 }
-
 
 /* =========================================================
    RENDER PRODUCTS
    ========================================================= */
 
 function renderProducts() {
-
-    const search =
-        document.getElementById("searchInput").value.toLowerCase().trim();
-
-    const bible =
-        document.getElementById("bibleFilter").value;
-
-    const colour =
-        document.getElementById("colourFilter").value;
-
-    const brand =
-        document.getElementById("brandFilter").value;
+    const search = document.getElementById("searchInput").value.toLowerCase().trim();
+    const bible = document.getElementById("bibleFilter").value;
+    const colour = document.getElementById("colourFilter").value;
+    const brand = document.getElementById("brandFilter").value;
 
     const filtered = products.filter(product => {
-
         const matchesSearch =
             product.name.toLowerCase().includes(search) ||
             product.bible.toLowerCase().includes(search) ||
             product.brand.toLowerCase().includes(search) ||
             product.colour.toLowerCase().includes(search);
-
-        const matchesBible =
-            !bible || product.bible === bible;
-
-        const matchesColour =
-            !colour || product.colour === colour;
-
-        const matchesBrand =
-            !brand || product.brand === brand;
-
-        return matchesSearch &&
-               matchesBible &&
-               matchesColour &&
-               matchesBrand;
+        const matchesBible = !bible || product.bible === bible;
+        const matchesColour = !colour || product.colour === colour;
+        const matchesBrand = !brand || product.brand === brand;
+        return matchesSearch && matchesBible && matchesColour && matchesBrand;
     });
 
     const grid = document.getElementById("productsGrid");
-
     if (!filtered.length) {
         grid.innerHTML = `
-            <div style="
-                grid-column:1/-1;
-                text-align:center;
-                padding:50px;
-                color:#697586;
-            ">
+            <div style="grid-column:1/-1;text-align:center;padding:50px;color:#697586;">
                 <h3>No jerseys found.</h3>
                 <p>Try another search or filter.</p>
-            </div>
-        `;
+            </div>`;
         return;
     }
 
     grid.innerHTML = filtered.map(product => `
         <div class="product-card">
-
             <div class="product-image">
-
-                <div class="product-tag">
-                    ${product.tag}
-                </div>
-
-                <img
-                    class="product-jersey"
-                    src="${product.image}"
-                    alt="${product.name}"
-                    loading="lazy"
-                >
-
+                <div class="product-tag">${product.tag}</div>
+                <img class="product-jersey" src="${product.image}" alt="${product.name}" loading="lazy">
             </div>
-
             <div class="product-info">
-
-                <div class="product-category">
-                    ${product.bible}
-                </div>
-
-                <div class="product-name">
-                    ${product.name}
-                </div>
-
-                <div style="
-                    color:#697586;
-                    font-size:12px;
-                    margin-bottom:4px;
-                ">
-                    ${product.colour}
-                </div>
-
-                <div class="product-price">
-                    ${money(product.price)}
-                </div>
-
+                <div class="product-category">${product.bible}</div>
+                <div class="product-name">${product.name}</div>
+                <div style="color:#697586;font-size:12px;margin-bottom:4px;">${product.colour}</div>
+                <div class="product-price">${money(product.price)}</div>
                 <div class="product-actions">
-
-                    <button
-                        class="btn btn-primary"
-                        onclick="addToCart(${product.id})"
-                    >
-                        ADD TO CART
-                    </button>
-
+                    <button class="btn btn-primary" onclick="addToCart(${product.id})">ADD TO CART</button>
                 </div>
-
             </div>
-
-        </div>
-    `).join("");
+        </div>`).join("");
 }
-
 
 /* =========================================================
    COLOUR
    ========================================================= */
 
 function getColour(colour) {
-
     const colours = {
-
-        Black: "#111827",
-
-        White: "#e8edf2",
-
-        Red: "#b91c1c",
-
-        Blue: "#1756a9",
-
-        Green: "#176b45",
-
-        Gold: "#c99a1b"
-
+        Black: "#111827", White: "#e8edf2", Red: "#b91c1c",
+        Blue: "#1756a9", Green: "#176b45", Gold: "#c99a1b",
+        Yellow: "#eab308"
     };
-
     return colours[colour] || "#111";
-
 }
 
+function saveCart() {
+    localStorage.setItem("cart", JSON.stringify(cart));
+}
 
 /* =========================================================
    ADD TO CART
    ========================================================= */
 
 function addToCart(id) {
-
     const product = products.find(p => p.id === id);
-
     if (!product) return;
 
-    const existing = cart.find(item => item.id === id);
+    // Only combine items that have not yet had a size/colour selected.
+    const existing = cart.find(item =>
+        item.id === id && !item.size && !item.colourSelected
+    );
 
     if (existing) {
         existing.quantity++;
     } else {
         cart.push({
             ...product,
+            lineId: cartLineCounter++,
             quantity: 1,
             size: "",
             colourSelected: ""
@@ -2410,200 +2341,136 @@ function addToCart(id) {
     }
 
     updateCart();
-
     showToast(product.name + " added to your cart.");
-    localStorage.setItem("cart", JSON.stringify(cart));
 }
 
+/* =========================================================
+   DUPLICATE ONE UNIT INTO A SEPARATE CART LINE
+   ========================================================= */
+
+function duplicateCartItem(lineId) {
+    const item = cart.find(item => item.lineId === lineId);
+    if (!item || item.quantity < 2) return;
+
+    // Take one unit out of this line and create an independent copy.
+    item.quantity--;
+
+    cart.push({
+        ...item,
+        lineId: cartLineCounter++,
+        quantity: 1,
+        size: "",
+        colourSelected: ""
+    });
+
+    updateCart();
+    showToast("Item duplicated. Choose its own size and colour.");
+}
 
 /* =========================================================
    UPDATE CART
    ========================================================= */
 
 function updateCart() {
-
-    const count =
-        cart.reduce((sum, item) => sum + item.quantity, 0);
-
+    const count = cart.reduce((sum, item) => sum + item.quantity, 0);
     document.getElementById("cartCount").textContent = count;
 
     const container = document.getElementById("cartItems");
 
     if (!cart.length) {
-
         container.innerHTML = `
-            <p style="
-                color:#697586;
-                text-align:center;
-                padding:30px;
-            ">
-                Your cart is empty.
-            </p>
-        `;
-
+            <p style="color:#697586;text-align:center;padding:30px;">Your cart is empty.</p>`;
     } else {
-
         container.innerHTML = cart.map(item => `
-
             <div class="cart-item">
+                <div class="cart-thumb" style="--item-color:${getColour(item.colour)};${item.image ? `background-image:url('${item.image}');background-size:cover;background-position:center;` : ""}"></div>
 
-                <div
-                    class="cart-thumb"
-                    style="
-                        --item-color:${getColour(item.colour)}
-                        ${item.image ? `;background-image:url('${item.image}');background-size:cover;background-position:center` : ""}
-                    "
-                ></div>
-
-                <div>
-
-                    <div class="cart-item-name">
-                        ${item.name}
-                    </div>
-
-                    <div class="cart-item-price">
-                        ${money(item.price)}
-                    </div>
+                <div style="flex:1;min-width:0;">
+                    <div class="cart-item-name">${item.name}</div>
+                    <div class="cart-item-price">${money(item.price)}</div>
 
                     <div style="margin-top:8px;">
-
-                        <select
-                            aria-label="Size"
-                            onchange="setCartSize(${item.id}, this.value)"
-                            style="
-                                width:100%;
-                                padding:6px;
-                                border:1px solid #dfe5eb;
-                                border-radius:6px;
-                                margin-bottom:5px;
-                                font-size:12px;
-                            "
-                        >
+                        <select aria-label="Size" onchange="setCartSize(${item.lineId}, this.value)"
+                            style="width:100%;padding:6px;border:1px solid #dfe5eb;border-radius:6px;margin-bottom:5px;font-size:12px;">
                             <option value="">Select size</option>
-                            <option value="S" ${item.size==="S"?"selected":""}>S</option>
-                            <option value="M" ${item.size==="M"?"selected":""}>M</option>
-                            <option value="L" ${item.size==="L"?"selected":""}>L</option>
-                            <option value="XL" ${item.size==="XL"?"selected":""}>XL</option>
-                            <option value="XXL" ${item.size==="XXL"?"selected":""}>XXL</option>
-                            <option value="XXXL" ${item.size==="XXXL"?"selected":""}>XXXL</option>
+                            <option value="S" ${item.size === "S" ? "selected" : ""}>S</option>
+                            <option value="M" ${item.size === "M" ? "selected" : ""}>M</option>
+                            <option value="L" ${item.size === "L" ? "selected" : ""}>L</option>
+                            <option value="XL" ${item.size === "XL" ? "selected" : ""}>XL</option>
+                            <option value="XXL" ${item.size === "XXL" ? "selected" : ""}>XXL</option>
+                            <option value="XXXL" ${item.size === "XXXL" ? "selected" : ""}>XXXL</option>
                         </select>
 
-                        <select
-                            aria-label="Colour"
-                            onchange="setCartColour(${item.id}, this.value)"
-                            style="
-                                width:100%;
-                                padding:6px;
-                                border:1px solid #dfe5eb;
-                                border-radius:6px;
-                                font-size:12px;
-                            "
-                        >
+                        <select aria-label="Colour" onchange="setCartColour(${item.lineId}, this.value)"
+                            style="width:100%;padding:6px;border:1px solid #dfe5eb;border-radius:6px;font-size:12px;">
                             <option value="">Select colour</option>
-                            <option value="Black" ${item.colourSelected==="Black"?"selected":""}>Black</option>
-                            <option value="White" ${item.colourSelected==="White"?"selected":""}>White</option>
-                            <option value="Red" ${item.colourSelected==="Red"?"selected":""}>Red</option>
-                            <option value="Blue" ${item.colourSelected==="Blue"?"selected":""}>Blue</option>
-                            <option value="Green" ${item.colourSelected==="Green"?"selected":""}>Green</option>
-                            <option value="Yellow" ${item.colourSelected==="Yellow"?"selected":""}>Yellow</option>
+                            <option value="Black" ${item.colourSelected === "Black" ? "selected" : ""}>Black</option>
+                            <option value="White" ${item.colourSelected === "White" ? "selected" : ""}>White</option>
+                            <option value="Red" ${item.colourSelected === "Red" ? "selected" : ""}>Red</option>
+                            <option value="Blue" ${item.colourSelected === "Blue" ? "selected" : ""}>Blue</option>
+                            <option value="Green" ${item.colourSelected === "Green" ? "selected" : ""}>Green</option>
+                            <option value="Yellow" ${item.colourSelected === "Yellow" ? "selected" : ""}>Yellow</option>
                         </select>
-
                     </div>
 
                     <div class="quantity">
-
-                        <button onclick="changeQuantity(${item.id},-1)">
-                            −
-                        </button>
-
+                        <button onclick="changeQuantity(${item.lineId},-1)">−</button>
                         <strong>${item.quantity}</strong>
-
-                        <button onclick="changeQuantity(${item.id},1)">
-                            +
-                        </button>
-
+                        <button onclick="changeQuantity(${item.lineId},1)">+</button>
                     </div>
 
+                    ${item.quantity > 1 ? `
+                        <button type="button" onclick="duplicateCartItem(${item.lineId})"
+                            style="margin-top:7px;padding:7px 10px;background:#173b32;color:#fff;border:0;border-radius:5px;cursor:pointer;font-size:12px;">
+                            + Duplicate for another size/colour
+                        </button>` : ""}
                 </div>
 
-                <button
-                    class="close-btn"
-                    onclick="removeFromCart(${item.id})"
-                >
-                    ✕
-                </button>
-
-            </div>
-
-        `).join("");
+                <button class="close-btn" onclick="removeFromCart(${item.lineId})">✕</button>
+            </div>`).join("");
     }
 
-    const total =
-        cart.reduce(
-            (sum,item) => sum + item.price * item.quantity,
-            0
-        );
-
+    const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     document.getElementById("cartTotal").textContent = money(total);
+    saveCart();
 }
 
-function setCartSize(id, value) {
-
-    const item = cart.find(item => item.id === id);
-
+function setCartSize(lineId, value) {
+    const item = cart.find(item => item.lineId === lineId);
     if (!item) return;
-
     item.size = value;
-    localStorage.setItem("cart", JSON.stringify(cart));
+    saveCart();
 }
 
-function setCartColour(id, value) {
-
-    const item = cart.find(item => item.id === id);
-
+function setCartColour(lineId, value) {
+    const item = cart.find(item => item.lineId === lineId);
     if (!item) return;
-
     item.colourSelected = value;
-    localStorage.setItem("cart", JSON.stringify(cart));
+    updateCart();
 }
-
 
 /* =========================================================
    QUANTITY
    ========================================================= */
 
-function changeQuantity(id, change) {
-
-    const item =
-        cart.find(item => item.id === id);
-
+function changeQuantity(lineId, change) {
+    const item = cart.find(item => item.lineId === lineId);
     if (!item) return;
 
     item.quantity += change;
-
     if (item.quantity <= 0) {
-
-        cart =
-            cart.filter(item => item.id !== id);
-
+        cart = cart.filter(item => item.lineId !== lineId);
     }
-
     updateCart();
-localStorage.setItem("cart", JSON.stringify(cart));
 }
-
 
 /* =========================================================
    REMOVE
    ========================================================= */
 
-function removeFromCart(id) {
-
-    cart =
-        cart.filter(item => item.id !== id);
-
+function removeFromCart(lineId) {
+    cart = cart.filter(item => item.lineId !== lineId);
     updateCart();
-localStorage.setItem("cart", JSON.stringify(cart));
 }
 
 
@@ -3067,7 +2934,7 @@ function validateCheckoutForm() {
         showToast("Payment verified successfully!");
 
         setTimeout(() => alert(
-            "Thank you for your order!\n\nOrder reference: " +
+            "Thank you for your order! We will contact you shortly on Whatsapp.\n\nOrder reference: " +
             transaction.reference
         ), 500);
 
