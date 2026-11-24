@@ -2324,7 +2324,7 @@ function getColour(colour) {
     const colours = {
         Black: "#111827", White: "#e8edf2", Red: "#b91c1c",
         Blue: "#1756a9", Green: "#176b45", Gold: "#c99a1b",
-        Yellow: "#eab308"
+        Yellow: "#eab308", Pink: "#f57a8f"
     };
     return colours[colour] || "#111";
 }
@@ -2428,6 +2428,7 @@ function updateCart() {
                             <option value="Blue" ${item.colourSelected === "Blue" ? "selected" : ""}>Blue</option>
                             <option value="Green" ${item.colourSelected === "Green" ? "selected" : ""}>Green</option>
                             <option value="Yellow" ${item.colourSelected === "Yellow" ? "selected" : ""}>Yellow</option>
+                            <option value="Pink" ${item.colourSelected === "Pink" ? "selected" : ""}>Pink</option>
                         </select>
                     </div>
 
